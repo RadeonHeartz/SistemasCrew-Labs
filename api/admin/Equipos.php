@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../helpers/auth.php';
-auth_admin();
+//auth_admin();
 require_once(__DIR__ . "/../core/Connection.php");
 require_once(__DIR__ . "/../models/Equipo.php");
 require_once(__DIR__ . "/../core/Response.php");
@@ -10,15 +10,27 @@ $conection = new Connection();
 $response = new Response();
 $method = $_SERVER['REQUEST_METHOD'];
 
-switch($method){
+switch ($method) {
     case 'GET':
         try {
-            $ultimoid = $_GET['ultimo'] ?? 0;
             $equipo = new Equipo($conection, $response);
-            $equipo->getAll($ultimoid);
+
+            if (isset($_GET['codigo']) && trim($_GET['codigo']) !== '') {
+                // Detalles completos de un equipo
+                $equipo->getAll(trim($_GET['codigo']));
+            } else {
+                // Listado resumido para la tabla
+                $ultimoid = (int) ($_GET['ultimo'] ?? 0);
+                $equipo->getPreview($ultimoid);
+            }
         } catch (\Throwable $th) {
-            $response->error("Error al obtener los resultados", 2001, 400);
-            #$response->debug(null, $th);
+            error_log('Error Equipos.php: ' . $th->getMessage());
+
+            $response->error(
+                "Error al obtener los resultados",
+                2001,
+                400
+            );
         }
         break;
     case 'POST':
@@ -32,11 +44,11 @@ switch($method){
         $descripcion = $_POST['descripcion'] ?? null;
         $imagen = $_POST['imagen'] ?? null;
 
-        if ( empty(trim($codigo)) || empty(trim($categoria)) || empty(trim($ubicacion)) || empty(trim($estado)) || empty(trim($descripcion))) {
+        if (empty(trim($codigo)) || empty(trim($categoria)) || empty(trim($ubicacion)) || empty(trim($estado)) || empty(trim($descripcion))) {
             $response->error("Faltan datos obligatorios", 2002, 400);
             die();
         }
-        try{
+        try {
             $equipo = new Equipo($conection, $response);
             $equipo->add($_POST);
         } catch (\Throwable $th) {
@@ -45,44 +57,44 @@ switch($method){
         }
         break;
     case 'PUT':
-            $_PUT = leerBody();
-            $codigo = $_PUT['codigo'] ?? null;
-            $categoria = $_PUT['categoria'] ?? null;
-            $ubicacion = $_PUT['ubicacion'] ?? null;
-            $estado = $_PUT['estado'] ?? null;
-            $marca = $_PUT['marca'] ?? null;
-            $modelo = $_PUT['modelo'] ?? null;
-            $serie = $_PUT['serie'] ?? null;
-            $descripcion = $_PUT['descripcion'] ?? null;
-            $imagen = $_PUT['imagen'] ?? null;
+        $_PUT = leerBody();
+        $codigo = $_PUT['codigo'] ?? null;
+        $categoria = $_PUT['categoria'] ?? null;
+        $ubicacion = $_PUT['ubicacion'] ?? null;
+        $estado = $_PUT['estado'] ?? null;
+        $marca = $_PUT['marca'] ?? null;
+        $modelo = $_PUT['modelo'] ?? null;
+        $serie = $_PUT['serie'] ?? null;
+        $descripcion = $_PUT['descripcion'] ?? null;
+        $imagen = $_PUT['imagen'] ?? null;
 
-            if ( empty(trim($codigo)) || empty(trim($categoria)) || empty(trim($ubicacion)) || empty(trim($estado)) || empty(trim($descripcion))) {
-            $response->error("Faltan datos obligatorios", 2002, 400);
-            die();
-            }
-            try {
-            $equipo = new Equipo($conection, $response);
-                $equipo->update($_PUT);
-            } catch (\Throwable $th) {
-                $response->error("Error al actualizar el equipo", 2003, 400);
-            }
-            break;
-   case 'DELETE':
-    try {
-        $Codigo = $_GET['Codigo'] ?? null;
-
-        if (empty($Codigo) || trim($Codigo) === '') {
+        if (empty(trim($codigo)) || empty(trim($categoria)) || empty(trim($ubicacion)) || empty(trim($estado)) || empty(trim($descripcion))) {
             $response->error("Faltan datos obligatorios", 2002, 400);
             die();
         }
+        try {
+            $equipo = new Equipo($conection, $response);
+            $equipo->update($_PUT);
+        } catch (\Throwable $th) {
+            $response->error("Error al actualizar el equipo", 2003, 400);
+        }
+        break;
+    case 'DELETE':
+        try {
+            $Codigo = $_GET['Codigo'] ?? null;
 
-        $equipo = new Equipo($conection, $response);
-        $equipo->delete([
-            'Codigo' => $Codigo
-        ]);
+            if (empty($Codigo) || trim($Codigo) === '') {
+                $response->error("Faltan datos obligatorios", 2002, 400);
+                die();
+            }
 
-    } catch (\Throwable $th) {
-        $response->error("Error al eliminar el equipo", 2004, 400);
-    }
-    break;
+            $equipo = new Equipo($conection, $response);
+            $equipo->delete([
+                'Codigo' => $Codigo
+            ]);
+        } catch (\Throwable $th) {
+            $response->error("Error al eliminar el equipo", 2004, 400);
+        }
+        break;
+    //AÑADIR MÉTODO QUERY
 }

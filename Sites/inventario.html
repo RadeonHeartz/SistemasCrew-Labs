@@ -1,11 +1,7 @@
 <button id="IngresarEquipo">Ingresar Equipo</button>
 <dialog class="Formulario" id="ModalEquipos">
   <button id="cerrarModal">Cerrar</button>
-  <form
-    method="dialog"
-    action="http://localhost/SistemasCrew-Labs/api/admin/Equipos.php"
-    id="equipoForm"
-  >
+  <form method="dialog" action="http://localhost/SistemasCrew-Labs/api/admin/Equipos.php" id="equipoForm">
     <label for="codigo">Codigo Equipo:</label>
     <input type="text" id="codigo" name="codigo" required />
 
@@ -39,20 +35,21 @@
     <button type="submit">Agregar Equipo</button>
   </form>
 </dialog>
+<dialog id="ModalPreview">
+  <button type="button" id="cerrarPreview">Cerrar</button>
+  <h2>Detalles del equipo</h2>
+  <div id="DetalleEquipo">
+  </div>
+</dialog>
 <div id="inventarioContainer">
   <table id="inventarioTable">
     <thead>
       <tr>
         <th>Codigo Equipo</th>
-        <th>Categoria</th>
-        <th>Ubicación</th>
+        <th>Descripción</th>
+        <th>Categorias</th>
         <th>Estado</th>
-        <th>Marca</th>
-        <th>Modelo</th>
-        <th>Serie</th>
-        <th>Descripcion</th>
-        <th>Registro</th>
-        <th>Baja</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody></tbody>
