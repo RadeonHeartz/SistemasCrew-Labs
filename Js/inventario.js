@@ -1,4 +1,4 @@
-/*async function inventoryFetch(url, options = {}) {
+async function inventoryFetch(url, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set(
     "X-CSRF-Token",
@@ -14,21 +14,23 @@
     throw new Error(error.message || "No se pudo completar la solicitud.");
   }
   return response;
-}*/
+}
 
 let UltimoId = 0;
 let action = "GUARDAR";
+let form = document.querySelector("#equipoForm");
+const tbody = document.querySelector("#inventarioTable tbody");
 
 //Función flecha para devolver la url de la api
 let API_RUTA = (controlador) => {
   return `api/admin/${controlador}.php`;
 };
 
-//Función para paginar la tabla 
+//Función para paginar la tabla
 async function TablaPaginada() {
   const URL = API_RUTA("PaginasEquipos");
   try {
-    const response = await fetch(URL);
+    const response = await inventoryFetch(URL);
     const datos = await response.json();
     const paginaciondiv = document.querySelector("#Paginacion");
 
@@ -54,7 +56,6 @@ async function TablaPaginada() {
 
     //Mostrar primera página siempre al iniciar
     ObtenerEquipos(0);
-
   } catch (error) {
     alert("Error al cargar los datos");
   }
@@ -64,12 +65,11 @@ async function TablaPaginada() {
 async function ObtenerEquipos(IdFinal = 0) {
   const URL = API_RUTA("Equipos");
   try {
-
-    const response = await fetch(`${URL}?ultimo=${IdFinal}`);
+    const response = await inventoryFetch(`${URL}?ultimo=${IdFinal}`);
     const datos = await response.json();
     const tabla = document.querySelector("#inventarioTable tbody");
 
-    //Limpiar la tabla 
+    //Limpiar la tabla
     tabla.innerHTML = "";
 
     datos.data.forEach((equipo) => {
@@ -133,27 +133,10 @@ function CerrarPreview() {
 
 async function ObtenerPreview(codigo) {
   const URL = API_RUTA("Equipos");
-  //   try{
-  //     console.log("URL solicitada:",  `${URL}?codigo=${encodeURIComponent(codigo)}`);
-
-  //             const response = await fetch(
-  //       `${URL}?codigo=${encodeURIComponent(codigo)}`
-  //     );
-
-  //         console.log("Estado HTTP:", response.status);
-
-  //         const resultado = await response.json();
-
-  //         console.log("Respuesta del servidor:", resultado);
-
-  //         // Continúa aquí con tu lógica actual...
-  //     } catch (error) {
-  //         console.error("Error al obtener el detalle:", error);
-  //     }
-  //   }
-  // /*
   try {
-    const response = await fetch(`${URL}?codigo=${encodeURIComponent(codigo)}`);
+    const response = await inventoryFetch(
+      `${URL}?codigo=${encodeURIComponent(codigo)}`,
+    );
 
     const datos = await response.json();
     const equipo = datos.data;
@@ -168,11 +151,10 @@ async function ObtenerPreview(codigo) {
   }
 }
 
-
 async function ObtenerCategorias() {
   const API_URL_CATEGORIAS = API_RUTA("Categorias");
   try {
-    const response = await fetch(API_URL_CATEGORIAS);
+    const response = await inventoryFetch(API_URL_CATEGORIAS);
     const datos = await response.json();
 
     const selectCategoria = document.getElementById("categoria");
@@ -193,7 +175,7 @@ async function ObtenerCategorias() {
 async function ObtenerUbicaciones() {
   const API_URL_UBICACIONES = API_RUTA("Ubicaciones");
   try {
-    const response = await fetch(API_URL_UBICACIONES);
+    const response = await inventoryFetch(API_URL_UBICACIONES);
     const datos = await response.json();
     const ubicaciones = document.getElementById("ubicacion");
 
@@ -211,7 +193,7 @@ async function ObtenerUbicaciones() {
 async function ObtenerEstadosEquipo() {
   const API_URL_ESTADOS = API_RUTA("Estados_Equipo");
   try {
-    const response = await fetch(API_URL_ESTADOS);
+    const response = await inventoryFetch(API_URL_ESTADOS);
     const datos = await response.json();
     const estados = document.getElementById("estado");
     datos.data.forEach((estado) => {
@@ -225,25 +207,51 @@ async function ObtenerEstadosEquipo() {
   }
 }
 
+
 function cargarModal() {
-  const URL = API_RUTA("Equipos");
-  const form = document.querySelector("#equipoForm");
+  form = document.querySelector("#equipoForm");
+
   const modal = document.querySelector("#ModalEquipos");
   const abrir = document.querySelector("#IngresarEquipo");
   const cerrar = document.querySelector("#cerrarModal");
-  const tbody = document.querySelector("#inventarioTable tbody");
+
+  if (!form || !modal || !abrir || !cerrar) {
+    console.error("No se encontraron todos los elementos del modal:", {
+      form,
+      modal,
+      abrir,
+      cerrar
+    });
+    return;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (action === "GUARDAR") {
+      await nuevoEquipo();
+    } else {
+      await editarEquipo();
+    }
+  });
+
   abrir.addEventListener("click", () => {
     modal.showModal();
   });
+
   cerrar.addEventListener("click", () => {
     form.reset();
     modal.close();
   });
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+}
+
+
+async function nuevoEquipo() {
+  const URL = API_RUTA("Equipos");
+  try {
     const data = new FormData(form);
     try {
-      const response = await fetch(URL, {
+      const response = await inventoryFetch(URL, {
         method: "POST",
         body: data, //body: JSON.STRINGFY(data); Esto es para PUT
       });
@@ -255,5 +263,11 @@ function cargarModal() {
     form.reset();
     tbody.innerHTML = "";
     TablaPaginada();
-  });
+  } catch (error) {
+    alert("Error al insertar equipo, intente de nuevo");
+    form.reset();
+  }
+}
+async function editarEquipo() {
+  return null;
 }
