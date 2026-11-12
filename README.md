@@ -1,44 +1,130 @@
-# SistemasCrew-Labs
+﻿# SistemasCrew-Labs
 
-Sistema de gestión de equipos de laboratorio con PHP, MySQL/PDO y JavaScript, sin frameworks ni compilación.
+Sistema de inventario, préstamos y devolución de equipos de laboratorio. Desarrollado con PHP, MySQL/MariaDB, PDO, HTML, CSS y JavaScript con Fetch API, sin framework ni compilación de frontend.
 
-## Configuración
+## Funcionalidades
 
-1. Sirve esta carpeta con Apache/PHP (por ejemplo, XAMPP) en `/SistemasCrew-Labs/`.
-2. Habilita `pdo_mysql` y `mbstring`. Las pruebas HTTP también necesitan `curl` en PHP.
-3. Conserva la configuración de conexión existente en `api/core/.env`: `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PSSW`, `DATABASE_NAME` y `DATABASE_CHARSET`. No publiques este archivo.
-4. Usa la base existente con las tablas de `Scripts/SistemasCrew.sql`. **Ese script elimina la base: no lo ejecutes sobre datos existentes.** La integración no necesita migraciones. Deben existir el rol `Usuario` y el estado `Activo`; sus IDs se resuelven por nombre. Conserva los índices únicos de correo, carnet y nombre de usuario.
-5. Abre `http://localhost/SistemasCrew-Labs/login.php`. Las cuentas existentes deben tener hashes generados con `password_hash`; no se aceptan contraseñas almacenadas en texto plano. El registro público siempre crea usuarios ordinarios. Los roles administrativos se asignan por el procedimiento administrativo de tu instalación.
+- Inicio de sesión, registro y cierre de sesión.
+- Inventario con búsqueda, paginación, detalles, creación, edición y baja lógica de equipos.
+- Clasificación por categoría, ubicación y estado; generación del prefijo del código según la categoría.
+- Registro de préstamos con validación de disponibilidad y asignación de usuario por el administrador.
+- Consulta y registro de devoluciones, estado de retorno, observaciones y multas según tarifas configuradas.
+- Identificación por fecha de préstamos vencidos en Devoluciones y presentación separada para el administrador.
+- Historial con búsqueda y paginación: consulta préstamos, solicitantes, fechas, estados y motivos. No es una consulta de la tabla de eventos `Historial` ni de `Bitacora`.
+- Mantenimiento de usuarios con búsqueda, paginación, detalles, creación, edición y desactivación.
+- Navegación lateral según identidad y permisos, tema oscuro y tablas adaptables al espacio disponible.
 
-Para actualizar una base existente al middleware de permisos, ejecuta únicamente `Scripts/permisos-auth.sql` en esa base. Es repetible, agrega permisos sin eliminar datos ni asignaciones existentes y requiere los roles, módulos y acciones iniciales. Las instalaciones nuevas ya incluyen estas asignaciones al final de `Scripts/SistemasCrew.sql`.
+La edición y baja de equipos se bloquean cuando existe un préstamo Pendiente, Activo o Vencido sin devolución. Las bajas de equipos y usuarios conservan sus registros para mantener las relaciones existentes.
 
-## Autenticación y acceso
+## Requisitos
 
-`login.php` carga exclusivamente `Styles/login.css`, `Js/login.js` y las fuentes DM Sans locales en `fonts/`. Ofrece pestañas de acceso y registro, validación en español, navegación por teclado y controles para mostrar contraseñas.
+- Apache 2.4 con `mod_rewrite` y permisos para aplicar `.htaccess` (`AllowOverride` compatible).
+- PHP 8.1 o superior con `pdo_mysql` y `mbstring`.
+- MySQL o MariaDB compatible con el esquema; los datos de ejemplo están preparados para MySQL 8.0 o superior.
+- Navegador moderno con JavaScript habilitado. La presentación de tablas como tarjetas utiliza consultas de contenedor CSS; sin ese soporte se conserva la tabla desplazable.
+- Para pruebas: Node.js y, en las pruebas HTTP de PHP, extensión `curl`.
 
-El registro requiere nombres y apellidos (100 caracteres cada uno), carnet y usuario (50), correo (150), contraseña y confirmación; el teléfono (20) es opcional. La contraseña admite al menos 8 caracteres y hasta 72 bytes, preserva sus espacios y se almacena con `PASSWORD_DEFAULT`. `Persona` y `Usuario` se insertan en una transacción; los conflictos únicos devuelven HTTP 409. Al terminar, se vuelve a la pestaña de acceso.
+## Instalación local
 
-Los POST `api/auth/login.php` y `register.php` reciben JSON y el token CSRF de la sesión. El acceso verifica el hash con `password_verify` y exige estado `Activo`, usando el mismo error para credenciales incorrectas y cuentas no habilitadas. Se regenera el ID de sesión y se guarda únicamente el ID y nombre del usuario. El dashboard permanece en `index.php`, protegido y con el nombre escapado.
+1. Colocar el proyecto en el directorio público de Apache, por ejemplo `C:\xampp\htdocs\SistemasCrew-Labs`.
+2. Iniciar Apache y MySQL.
+3. Preparar la base:
+   - Para una instalación nueva, importar `Scripts/SistemasCrew.sql`, que crea estructura y catálogos iniciales.
+   - **Ese script elimina y reconstruye la base. No ejecutarlo sobre información que se deba conservar.**
+   - Opcionalmente, importar `Scripts/Inserts.sql` después del esquema, únicamente en una base recién creada. Supone identificadores iniciales específicos y no debe ejecutarse repetidamente.
+   - Si ya existe una base compatible, conservarla sin volver a importar esquema e inserciones.
+4. Configurar localmente `api/core/.env`:
 
-`CerrarSesion` envía un POST con CSRF a `api/auth/logout.php`, destruye la sesión, elimina su cookie y redirige al acceso. Cookies HttpOnly y SameSite Strict, Secure bajo HTTPS y ruta ajustada al directorio del proyecto; HTTP local también funciona. En un proxy HTTPS, configura Apache para reconocer HTTPS de manera confiable.
+   | Clave | Contenido esperado |
+   | --- | --- |
+   | `DATABASE_URL` | Host del servidor MySQL |
+   | `DATABASE_USER` | Usuario de conexión |
+   | `DATABASE_PSSW` | Contraseña de conexión |
+   | `DATABASE_NAME` | Nombre de la base |
+   | `DATABASE_CHARSET` | Juego de caracteres, normalmente `utf8mb4` |
+   | `COOKIE_NAME` | Nombre de la cookie de autenticación |
+   | `COOKIE_KEY` | Clave declarada por la configuración; la firma actual utiliza una clave aleatoria guardada en sesión |
 
-Todos los endpoints `api/admin/` exigen sesión y permisos por módulo y acción mediante `Rol_Permiso`. El panel, el login y la API consultan el estado actual en MySQL; una cuenta desactivada pierde la sesión. Las páginas redirigen al login y la API devuelve JSON 401. Las escrituras requieren cabecera `X-CSRF-Token`. La API usa rutas relativas para funcionar en subdirectorios y bajo HTTPS.
+   No publicar `.env` ni sus valores.
+5. Importar `Scripts/Permisos.sql` en la base seleccionada para completar permisos de los módulos, incluido Usuarios. El script selecciona `dbSistemasCrew`: revisar ese nombre si la instalación utiliza otro. Agrega asignaciones sin reconstruir tablas; no reemplaza una revisión de permisos personalizados existentes.
+6. Abrir `http://localhost/SistemasCrew-Labs/login.php`.
+7. Registrar una cuenta o utilizar una cuenta del script de datos de ejemplo. El registro público asigna rol `Usuario` y estado `Activo`. Las contraseñas se almacenan mediante `password_hash`.
 
-Los permisos iniciales permiten al Administrador todas las acciones de Equipos y Prestamos; al Encargado leer, crear y actualizar equipos, y leer, crear, actualizar y autorizar préstamos; al Usuario leer equipos y leer y crear préstamos. Estos permisos no implementan operaciones que todavía no existen en los endpoints. Los roles adicionales necesitan asignaciones explícitas. El script conserva cualquier permiso previo, por lo que no revoca accesos personalizados.
+`Scripts/permisos-auth.sql` contiene asignaciones para Equipos, Prestamos y Devoluciones; no cubre por sí solo el mantenimiento de Usuarios. Ninguno de los scripts de permisos implementa operaciones que no existan en los controladores.
 
-## Verificación
+El acceso HTTP se permite desde `127.0.0.1` y `::1`; las conexiones remotas requieren HTTPS. `.htaccess` bloquea acceso a archivos ocultos, configuración interna, SQL, pruebas y documentación Markdown. La documentación se consulta desde el repositorio o editor, no como página pública de Apache.
 
-Con Apache y MySQL activos:
+## Acceso y permisos
+
+La autorización se consulta en MySQL mediante Usuario, Estado_Usuario, Rol_Permiso, Permiso, Modulo y Accion. El middleware relaciona GET con Leer, POST con Crear, PUT con Actualizar y DELETE con Eliminar, y exige CSRF para escrituras.
+
+- Administrador: las asignaciones de `Scripts/Permisos.sql` permiten administrar los módulos; el menú de Usuarios también exige este rol.
+- Encargado: recibe operaciones de inventario y préstamos y lectura de devoluciones según el script. Registrar una devolución exige además rol Administrador en el controlador.
+- Usuario: el script asigna lectura y creación de préstamos; no agrega acceso al mantenimiento de inventario. Las asignaciones previas personalizadas pueden ampliar lo visible.
+
+Historial exige autenticación: el administrador consulta todos los préstamos y los demás usuarios solo los propios. La consulta de devoluciones también limita los resultados al propietario cuando no es administrador, además de exigir el permiso del módulo.
+
+## Seguridad de autenticación
+
+El registro valida datos, comprueba duplicados e inserta Persona y Usuario en una transacción. El acceso utiliza `password_verify`, exige cuenta activa y regenera el ID de sesión y el token CSRF.
+
+La autenticación combina sesión PHP y cookie firmada con HMAC-SHA256 cuya clave aleatoria permanece en la sesión. Las cookies son HttpOnly y SameSite Strict, y Secure bajo HTTPS. La vigencia configurada es de ocho horas. La identidad y el estado actual se consultan en MySQL para los accesos protegidos.
+
+El login limita fallos por cuenta y por IP: ventana de quince minutos, tres fallos por cuenta y treinta por IP, con bloqueo de cinco minutos. Los contadores se guardan en archivos temporales con bloqueo exclusivo.
+
+## Organización
+
+| Ruta | Responsabilidad |
+| --- | --- |
+| `login.php` | Acceso, registro y tarjetas de integrantes |
+| `index.php` | Inicio protegido, navegación y carga de módulos |
+| `Sites/` | Vistas de inventario, usuarios, préstamos, devoluciones e historial |
+| `Styles/` | Tema, navegación, formularios, tablas, tarjetas y estilos de módulos |
+| `Js/` | Interacción, solicitudes API, filtros y adaptación de tablas |
+| `api/auth/` | Autenticación, límites de intentos y middleware |
+| `api/admin/` | Controladores de módulos y catálogos |
+| `api/models/` | Consultas y operaciones de persistencia |
+| `api/helpers/` | Sesión, cookie, CSRF y lectura de solicitudes |
+| `api/core/` | Configuración, conexión PDO y respuestas |
+| `Scripts/` | Esquema, datos de ejemplo y asignaciones de permisos |
+| `tests/` | Pruebas disponibles |
+
+## Personalización visual
+
+| Archivo | Elementos |
+| --- | --- |
+| `Styles/index.css` | Tema del inicio y barra lateral |
+| `Styles/modulos.css` | Controles, tablas, estados y diálogos compartidos |
+| `Styles/login.css` | Acceso y registro |
+| `Styles/equipo.css` | Tarjetas de integrantes |
+| `Styles/inventario.css` | Disposición del inventario |
+| `Styles/prestamos.css` | Tarjetas y formulario de préstamos |
+| `Styles/devoluciones.css` | Consulta y formulario de devolución |
+
+Los colores y otras medidas compartidas se definen mediante variables CSS. `Styles/index-carbon.css` conserva una variante del tema; su presencia no la activa automáticamente. `Js/tablas.js` agrega etiquetas a las celdas para la presentación móvil sin reemplazar los botones existentes.
+
+## Comprobaciones
+
+Desde la raíz, con PHP y Node.js disponibles:
+
+```powershell
+C:\xampp\php\php.exe -l login.php
+C:\xampp\php\php.exe -l index.php
+node --check Js/login.js
+node --check Js/inventario.js
+node --check Js/usuarios.js
+node --check Js/tablas.js
+node tests/usuarios-interfaz.js
+node tests/historial-interfaz.js
+node tests/tablas-responsive.js
+```
+
+Las pruebas JavaScript de interfaz utilizan entornos simulados; no sustituyen una inspección visual en navegador.
+
+Prueba de integración con Apache, MySQL y `curl` de PHP activos, preferiblemente en una base de pruebas:
 
 ```powershell
 C:\xampp\php\php.exe tests/auth-integration.php
-node --check Js/login.js
-node --check Js/inventario.js
-Get-ChildItem -Recurse -Filter *.php | ForEach-Object { C:\xampp\php\php.exe -l $_.FullName }
 ```
 
-Opcionalmente define `AUTH_TEST_URL` con la URL del proyecto terminada en `/`. La prueba CLI crea cuentas temporales con nombres aleatorios y las elimina en `finally`; no modifica cuentas existentes. Comprueba registro, confirmación, duplicados por validación y restricciones MySQL, hash y espacios en contraseña, acceso correcto e incorrecto, estados Inactivo/Bloqueado, sesión persistente, redirecciones, restricciones de escritura, CSRF, rollback con fallo de inserción inyectado, consultas de inventario, logout y recursos locales.
-
-En esta implementación se ejecutaron las comprobaciones PHP, JavaScript y HTTP/MySQL. La inspección visual del navegador quedó bloqueada por un fallo de inicialización de su entorno; quedan pendientes la comprobación visual móvil/escritorio, interacción de pestañas y contraseñas, y operaciones de escritura de inventario desde la interfaz. Las consultas de los cinco endpoints existentes se verificaron con sesión.
-
-La plantilla visual se adaptó de `login-page-10` de Colorlib; se conservan sus estilos, animaciones y fuentes locales.
+Esta prueba crea registros temporales y utiliza limpieza para retirarlos; no reconstruye la base. Puede configurarse `AUTH_TEST_URL` con la URL del proyecto terminada en `/`. Los comandos se proporcionan para ejecutar las comprobaciones y no constituyen una afirmación de que todas las pruebas hayan aprobado en una instalación determinada.
